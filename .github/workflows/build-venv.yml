@@ -68,12 +68,12 @@ jobs:
           }
           Get-ChildItem *.zip | Format-Table Name, Length
 
-      - name: Publish GitHub Release
+      - name: Publish releases
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          KEEP: "5"   # how many numbered build-* releases to keep as history
         run: |
-          $tag = "build-${{ github.run_number }}-py$($env:PYVER)"
           $fence = '```'
           $lock = (Get-Content venv\requirements.lock.txt -Raw -ErrorAction SilentlyContinue) ?? '(no packages)'
           @"
@@ -85,4 +85,22 @@ jobs:
           $fence
           "@ | Set-Content notes.md
           $files = @(Get-ChildItem *.zip | ForEach-Object { $_.Name })
-          gh release create $tag $files --target ${{ github.sha }} --title "Build ${{ github.run_number }} (Python $($env:PYVER))" --notes-file notes.md --latest
+
+          # 1) Rolling "latest" release: deleted and recreated each run, so there is
+          #    always exactly one, at a stable URL (/releases/latest/download/...).
+          gh release delete latest --yes --cleanup-tag 2>&1 | Out-Null
+          $global:LASTEXITCODE = 0
+          gh release create latest $files --target ${{ github.sha }} --title "Latest build (Python $($env:PYVER))" --notes-file notes.md --latest
+
+          # 2) Numbered archival release for history (not flagged "Latest").
+          $tag = "build-${{ github.run_number }}-py$($env:PYVER)"
+          gh release create $tag $files --target ${{ github.sha }} --title "Build ${{ github.run_number }} (Python $($env:PYVER))" --notes-file notes.md --latest=false
+
+          # 3) Prune: keep only the newest $KEEP numbered build-* releases.
+          $keep = [int]$env:KEEP
+          $all = gh release list --limit 1000 --json tagName,createdAt | ConvertFrom-Json
+          $builds = @($all | Where-Object { $_.tagName -like 'build-*' } | Sort-Object { [datetime]$_.createdAt } -Descending)
+          foreach ($r in ($builds | Select-Object -Skip $keep)) {
+            Write-Host "Pruning old release $($r.tagName)"
+            gh release delete $r.tagName --yes --cleanup-tag
+          }

@@ -11,8 +11,9 @@ These links always point to the newest build. No login is needed, and they never
 - **Venv:** https://github.com/Kushalr3ddy/windows-venv-builder/releases/latest/download/venv-py3.12-win_amd64.zip
 - **Wheels:** https://github.com/Kushalr3ddy/windows-venv-builder/releases/latest/download/wheelhouse-py3.12-win_amd64.zip
 
-Older builds are on the [Releases page](https://github.com/Kushalr3ddy/windows-venv-builder/releases).
-Each release lists the exact packages it contains.
+There's always one **`latest`** release holding the newest build (that's what the links above point to),
+plus the most recent **5 numbered `build-N` releases** on the [Releases page](https://github.com/Kushalr3ddy/windows-venv-builder/releases)
+as history. Older numbered builds are pruned automatically. Each release lists the exact packages it contains.
 
 From PowerShell:
 
