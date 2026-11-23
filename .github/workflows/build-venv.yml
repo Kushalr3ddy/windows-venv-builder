@@ -4,11 +4,12 @@ on:
   push:
     paths:
       - requirements.txt
+      - .python-version
       - .github/workflows/build-venv.yml
   workflow_dispatch:
     inputs:
       python-version:
-        description: "Python version (must match the major.minor you have locally, e.g. 3.12)"
+        description: "Override Python version for this run only (e.g. 3.11). Leave blank to use .python-version."
         required: false
         default: ""
 
@@ -18,15 +19,26 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest   # Windows Server VM with Visual Studio Build Tools (MSVC) preinstalled
-    env:
-      # Default used on push ("3.12"). Change it to the Python version you run locally.
-      PYVER: ${{ inputs.python-version || '3.12' }}
     steps:
       - uses: actions/checkout@v7
 
+      - name: Determine Python version
+        id: pyver
+        run: |
+          $ver = "${{ inputs.python-version }}".Trim()
+          if ([string]::IsNullOrWhiteSpace($ver)) {
+            $ver = (Get-Content .python-version -Raw).Trim()
+          }
+          if ([string]::IsNullOrWhiteSpace($ver)) {
+            throw "No Python version: set it in .python-version or type one when running by hand."
+          }
+          "PYVER=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Building for Python $ver"
+
       - uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYVER }}
+          python-version: ${{ steps.pyver.outputs.version }}
           architecture: x64
 
       - name: Show toolchain

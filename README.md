@@ -27,9 +27,10 @@ curl.exe -LO https://github.com/Kushalr3ddy/windows-venv-builder/releases/latest
 
 Either of these works:
 
-- **Push a change to `requirements.txt`.** Editing it on github.com and clicking *Commit changes* counts too.
+- **Push a change to `requirements.txt` or `.python-version`.** Editing either on github.com and clicking
+  *Commit changes* counts too.
 - **Run it by hand:** open the **Actions** tab, pick **Build Windows venv** on the left, click **Run workflow**,
-  optionally type a Python version (e.g. `3.11`), then click **Run workflow** again.
+  optionally type a Python version to override just that run, then click **Run workflow** again.
 
 A build takes around 30 seconds to a few minutes. When it finishes, a new release appears and the links above update.
 
@@ -44,8 +45,9 @@ Both zips contain the same packages, so pick **one**.
 
 The `py3.12` is the Python version it was built for. **Your local Python must have the same
 major.minor version and be 64-bit**, or compiled packages won't import. To build for a different
-version, change the `PYVER` default (`'3.12'`) in `.github/workflows/build-venv.yml`, or type the version
-when you click **Run workflow**.
+version, edit the one line in [`.python-version`](.python-version) (e.g. `3.11`) and push — that
+both sets the version and starts a build. A version typed into **Run workflow** overrides the file
+for that single run only.
 
 > If `requirements.txt` has no packages, there's nothing to put in the wheelhouse zip, so it's skipped.
 
