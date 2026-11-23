@@ -1,0 +1,59 @@
+name: Build Windows venv
+
+on:
+  push:
+    paths:
+      - requirements.txt
+      - .github/workflows/build-venv.yml
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: "Python version (must match the major.minor you have locally, e.g. 3.12)"
+        required: false
+        default: ""
+
+env:
+  # Default used on push. Set this to the Python version you run locally.
+  DEFAULT_PYTHON: "3.12"
+
+jobs:
+  build:
+    runs-on: windows-latest   # Windows Server VM with Visual Studio Build Tools (MSVC) preinstalled
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version || env.DEFAULT_PYTHON }}
+          architecture: x64
+
+      - name: Show toolchain
+        run: |
+          python --version
+          python -c "import struct; print(struct.calcsize('P') * 8, 'bit')"
+
+      - name: Build wheels for everything in requirements.txt
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip wheel -r requirements.txt -w wheelhouse
+
+      - name: Create venv from those wheels
+        run: |
+          python -m venv venv
+          .\venv\Scripts\python.exe -m pip install --upgrade pip
+          .\venv\Scripts\python.exe -m pip install --no-index --find-links wheelhouse -r requirements.txt
+          .\venv\Scripts\python.exe -m pip freeze | Tee-Object -FilePath venv\requirements.lock.txt
+
+      # Recommended: prebuilt wheels. Install locally with no compiler needed.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheelhouse-py${{ inputs.python-version || env.DEFAULT_PYTHON }}-win_amd64
+          path: wheelhouse/
+          retention-days: 30
+
+      # The full venv folder (needs fix-venv.ps1 after unzipping, see README).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: venv-py${{ inputs.python-version || env.DEFAULT_PYTHON }}-win_amd64
+          path: venv/
+          retention-days: 30
