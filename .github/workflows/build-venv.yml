@@ -72,5 +72,5 @@ jobs:
           $lock
           $fence
           "@ | Set-Content notes.md
-          $files = Get-ChildItem *.zip | ForEach-Object { $_.Name }
-          gh release create $tag @files --target ${{ github.sha }} --title "Build ${{ github.run_number }} (Python $($env:PYVER))" --notes-file notes.md --latest
+          $files = @(Get-ChildItem *.zip | ForEach-Object { $_.Name })
+          gh release create $tag $files--target ${{ github.sha }} --title "Build ${{ github.run_number }} (Python $($env:PYVER))" --notes-file notes.md --latest
