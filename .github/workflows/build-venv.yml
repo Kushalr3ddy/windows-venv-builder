@@ -12,19 +12,21 @@ on:
         required: false
         default: ""
 
-env:
-  # Default used on push. Set this to the Python version you run locally.
-  DEFAULT_PYTHON: "3.12"
+permissions:
+  contents: write   # needed to publish the zips as a GitHub Release
 
 jobs:
   build:
     runs-on: windows-latest   # Windows Server VM with Visual Studio Build Tools (MSVC) preinstalled
+    env:
+      # Default used on push ("3.12"). Change it to the Python version you run locally.
+      PYVER: ${{ inputs.python-version || '3.12' }}
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
         with:
-          python-version: ${{ inputs.python-version || env.DEFAULT_PYTHON }}
+          python-version: ${{ env.PYVER }}
           architecture: x64
 
       - name: Show toolchain
@@ -43,17 +45,31 @@ jobs:
           .\venv\Scripts\python.exe -m pip install --upgrade pip
           .\venv\Scripts\python.exe -m pip install --no-index --find-links wheelhouse -r requirements.txt
           .\venv\Scripts\python.exe -m pip freeze | Tee-Object -FilePath venv\requirements.lock.txt
+          Copy-Item fix-venv.ps1 venv\
 
-      # Recommended: prebuilt wheels. Install locally with no compiler needed.
-      - uses: actions/upload-artifact@v7
-        with:
-          name: wheelhouse-py${{ inputs.python-version || env.DEFAULT_PYTHON }}-win_amd64
-          path: wheelhouse/
-          retention-days: 30
+      - name: Zip
+        run: |
+          7z a -tzip "venv-py$($env:PYVER)-win_amd64.zip" venv | Out-Null
+          if (Get-ChildItem wheelhouse -Filter *.whl -ErrorAction SilentlyContinue) {
+            7z a -tzip "wheelhouse-py$($env:PYVER)-win_amd64.zip" wheelhouse | Out-Null
+          }
+          Get-ChildItem *.zip | Format-Table Name, Length
 
-      # The full venv folder (needs fix-venv.ps1 after unzipping, see README).
-      - uses: actions/upload-artifact@v7
-        with:
-          name: venv-py${{ inputs.python-version || env.DEFAULT_PYTHON }}-win_amd64
-          path: venv/
-          retention-days: 30
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $tag = "build-${{ github.run_number }}-py$($env:PYVER)"
+          $fence = '```'
+          $lock = Get-Content venv\requirements.lock.txt -Raw
+          @"
+          Built for **Python $($env:PYVER), Windows x64** from commit ${{ github.sha }}.
+
+          Installed packages:
+          $fence
+          $lock
+          $fence
+          "@ | Set-Content notes.md
+          $files = Get-ChildItem *.zip | ForEach-Object { $_.Name }
+          gh release create $tag @files --target ${{ github.sha }} --title "Build ${{ github.run_number }} (Python $($env:PYVER))" --notes-file notes.md --latest
