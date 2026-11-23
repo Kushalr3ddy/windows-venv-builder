@@ -44,7 +44,8 @@ jobs:
           python -m venv venv
           .\venv\Scripts\python.exe -m pip install --upgrade pip
           .\venv\Scripts\python.exe -m pip install --no-index --find-links wheelhouse -r requirements.txt
-          .\venv\Scripts\python.exe -m pip freeze | Tee-Object -FilePath venv\requirements.lock.txt
+          .\venv\Scripts\python.exe -m pip freeze > venv\requirements.lock.txt
+          Get-Content venv\requirements.lock.txt
           Copy-Item fix-venv.ps1 venv\
 
       - name: Zip
@@ -62,7 +63,7 @@ jobs:
         run: |
           $tag = "build-${{ github.run_number }}-py$($env:PYVER)"
           $fence = '```'
-          $lock = Get-Content venv\requirements.lock.txt -Raw
+          $lock = (Get-Content venv\requirements.lock.txt -Raw -ErrorAction SilentlyContinue) ?? '(no packages)'
           @"
           Built for **Python $($env:PYVER), Windows x64** from commit ${{ github.sha }}.
 
