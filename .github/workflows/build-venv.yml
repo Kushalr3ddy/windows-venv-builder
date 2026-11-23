@@ -20,9 +20,9 @@ jobs:
   build:
     runs-on: windows-latest   # Windows Server VM with Visual Studio Build Tools (MSVC) preinstalled
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ inputs.python-version || env.DEFAULT_PYTHON }}
           architecture: x64
@@ -45,14 +45,14 @@ jobs:
           .\venv\Scripts\python.exe -m pip freeze | Tee-Object -FilePath venv\requirements.lock.txt
 
       # Recommended: prebuilt wheels. Install locally with no compiler needed.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheelhouse-py${{ inputs.python-version || env.DEFAULT_PYTHON }}-win_amd64
           path: wheelhouse/
           retention-days: 30
 
       # The full venv folder (needs fix-venv.ps1 after unzipping, see README).
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: venv-py${{ inputs.python-version || env.DEFAULT_PYTHON }}-win_amd64
           path: venv/
